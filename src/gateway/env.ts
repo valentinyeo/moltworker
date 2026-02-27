@@ -31,6 +31,23 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
     envVars.OPENAI_API_KEY = env.OPENAI_API_KEY;
   }
 
+  // OpenRouter configuration (OpenAI-compatible API)
+  if (env.OPENROUTER_API_KEY) {
+    envVars.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
+    // Also set as OPENAI_API_KEY since OpenRouter is OpenAI-compatible
+    if (!envVars.OPENAI_API_KEY) {
+      envVars.OPENAI_API_KEY = env.OPENROUTER_API_KEY;
+    }
+  }
+  if (env.OPENROUTER_MODEL) {
+    envVars.OPENROUTER_MODEL = env.OPENROUTER_MODEL;
+  }
+
+  // Moonshot/Kimi direct API configuration
+  if (env.MOONSHOT_API_KEY) {
+    envVars.MOONSHOT_API_KEY = env.MOONSHOT_API_KEY;
+  }
+
   // Pass base URL (used by start-moltbot.sh to determine provider)
   if (normalizedBaseUrl) {
     envVars.AI_GATEWAY_BASE_URL = normalizedBaseUrl;
@@ -55,6 +72,7 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.SLACK_APP_TOKEN) envVars.SLACK_APP_TOKEN = env.SLACK_APP_TOKEN;
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
+  if (env.HYPERTASK_BEARER_TOKEN) envVars.HYPERTASK_BEARER_TOKEN = env.HYPERTASK_BEARER_TOKEN;
 
   return envVars;
 }

@@ -72,15 +72,15 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
     }
   }
 
-  // Check for AI Gateway or direct Anthropic configuration
+  // Check for AI Gateway, OpenRouter, or direct Anthropic configuration
   if (env.AI_GATEWAY_API_KEY) {
     // AI Gateway requires both API key and base URL
     if (!env.AI_GATEWAY_BASE_URL) {
       missing.push('AI_GATEWAY_BASE_URL (required when using AI_GATEWAY_API_KEY)');
     }
-  } else if (!env.ANTHROPIC_API_KEY) {
-    // Direct Anthropic access requires API key
-    missing.push('ANTHROPIC_API_KEY or AI_GATEWAY_API_KEY');
+  } else if (!env.ANTHROPIC_API_KEY && !env.OPENROUTER_API_KEY && !env.MOONSHOT_API_KEY) {
+    // Need at least one provider API key
+    missing.push('ANTHROPIC_API_KEY, OPENROUTER_API_KEY, MOONSHOT_API_KEY, or AI_GATEWAY_API_KEY');
   }
 
   return missing;
@@ -217,6 +217,32 @@ app.route('/debug', debug);
 // =============================================================================
 // CATCH-ALL: Proxy to Moltbot gateway
 // =============================================================================
+
+// Middleware: Persist gateway token in a cookie so users don't need ?token= every time
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  const tokenParam = url.searchParams.get('token');
+  const tokenCookie = c.req.raw.headers.get('Cookie')?.match(/moltbot_token=([^;]+)/)?.[1];
+
+  if (tokenParam) {
+    // User provided token in URL — save it in a cookie for future visits
+    await next();
+    c.res = new Response(c.res.body, c.res);
+    c.res.headers.append('Set-Cookie', `moltbot_token=${tokenParam}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
+    return;
+  }
+
+  if (tokenCookie && !url.searchParams.has('token')) {
+    // No token in URL but we have one in cookie — inject it into the request URL
+    url.searchParams.set('token', tokenCookie);
+    const newRequest = new Request(url.toString(), c.req.raw);
+    // Replace the raw request so the proxy uses the token-injected URL
+    Object.defineProperty(c.req, 'raw', { value: newRequest, writable: true });
+    Object.defineProperty(c.req, 'url', { value: url.toString(), writable: true });
+  }
+
+  await next();
+});
 
 app.all('*', async (c) => {
   const sandbox = c.get('sandbox');

@@ -30,6 +30,21 @@ publicRoutes.get('/logo-small.png', (c) => {
   return c.env.ASSETS.fetch(c.req.raw);
 });
 
+// GET /api/env-check - Debug endpoint to check which env vars are set (no values)
+publicRoutes.get('/api/env-check', (c) => {
+  const env = c.env;
+  return c.json({
+    hasGatewayToken: !!env.MOLTBOT_GATEWAY_TOKEN,
+    hasAnthropicKey: !!env.ANTHROPIC_API_KEY,
+    hasOpenRouterKey: !!env.OPENROUTER_API_KEY,
+    hasMoonshotKey: !!env.MOONSHOT_API_KEY,
+    hasAccessTeamDomain: !!env.CF_ACCESS_TEAM_DOMAIN,
+    hasAccessAud: !!env.CF_ACCESS_AUD,
+    devMode: env.DEV_MODE,
+    e2eTestMode: env.E2E_TEST_MODE,
+  });
+});
+
 // GET /api/status - Public health check for gateway status (no auth required)
 publicRoutes.get('/api/status', async (c) => {
   const sandbox = c.get('sandbox');

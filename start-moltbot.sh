@@ -196,6 +196,11 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
         // "open" policy requires allowFrom: ["*"]
         config.channels.telegram.allowFrom = ['*'];
     }
+    // Enable the Telegram plugin (gateway requires this in addition to channels config)
+    config.plugins = config.plugins || {};
+    config.plugins.entries = config.plugins.entries || {};
+    config.plugins.entries.telegram = config.plugins.entries.telegram || {};
+    config.plugins.entries.telegram.enabled = true;
 }
 
 // Discord configuration
@@ -222,14 +227,73 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack.enabled = true;
 }
 
-// Base URL override (e.g., for Cloudflare AI Gateway)
+// Base URL override (e.g., for Cloudflare AI Gateway or OpenRouter)
 // Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
+//   https://openrouter.ai/api/v1
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
+const isOpenRouter = !!process.env.OPENROUTER_API_KEY;
+const isMoonshot = !!process.env.MOONSHOT_API_KEY;
 
-if (isOpenAI) {
+// Moonshot/Kimi configuration (takes precedence if MOONSHOT_API_KEY is set)
+if (isMoonshot) {
+    console.log('Configuring Moonshot/Kimi provider with Kimi K2.5');
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.moonshot = {
+        baseUrl: 'https://api.moonshot.ai/v1',
+        api: 'openai-completions',
+        apiKey: process.env.MOONSHOT_API_KEY,
+        models: [
+            { id: 'kimi-k2.5', name: 'Kimi K2.5', contextWindow: 131072 },
+            { id: 'kimi-k2-turbo-preview', name: 'Kimi K2 Turbo', contextWindow: 131072 },
+            { id: 'moonshot-v1-128k', name: 'Moonshot V1 128K', contextWindow: 131072 },
+        ]
+    };
+    // Add models to the allowlist
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['moonshot/kimi-k2.5'] = { alias: 'Kimi K2.5' };
+    config.agents.defaults.models['moonshot/kimi-k2-turbo-preview'] = { alias: 'Kimi K2 Turbo' };
+    config.agents.defaults.models['moonshot/moonshot-v1-128k'] = { alias: 'Moonshot 128K' };
+    config.agents.defaults.model.primary = 'moonshot/kimi-k2.5';
+} else if (isOpenRouter) {
+    const defaultModel = process.env.OPENROUTER_MODEL || 'moonshotai/kimi-k2.5';
+    console.log('Configuring OpenRouter provider with model:', defaultModel);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.openrouter = {
+        baseUrl: 'https://openrouter.ai/api/v1',
+        api: 'openai-responses',
+        apiKey: process.env.OPENROUTER_API_KEY,
+        models: [
+            // BRAIN & CODING & CONTENT - Kimi K2.5
+            { id: 'moonshotai/kimi-k2.5', name: 'Kimi K2.5 (Brain/Coding/Content)', contextWindow: 131072 },
+            // HEARTBEAT - Haiku (fast, cheap)
+            { id: 'anthropic/claude-3.5-haiku', name: 'Claude Haiku (Heartbeat)', contextWindow: 200000 },
+            // WEB SEARCH - Deepseek v3
+            { id: 'deepseek/deepseek-chat-v3-0324', name: 'Deepseek v3 (Web Search)', contextWindow: 65536 },
+            // VOICE - GPT-4o
+            { id: 'openai/gpt-4o', name: 'GPT-4o (Voice)', contextWindow: 128000 },
+            // IMAGE UNDERSTANDING - Gemini 3 Flash
+            { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash (Vision)', contextWindow: 1000000 },
+            // Other useful models
+            { id: 'google/gemini-2.5-pro-preview', name: 'Gemini 2.5 Pro', contextWindow: 1000000 },
+            { id: 'anthropic/claude-opus-4', name: 'Claude Opus 4', contextWindow: 200000 },
+        ]
+    };
+    // Add models to the allowlist so they appear in /models
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openrouter/moonshotai/kimi-k2.5'] = { alias: 'Kimi K2.5 (Brain/Coding/Content)' };
+    config.agents.defaults.models['openrouter/anthropic/claude-3.5-haiku'] = { alias: 'Haiku (Heartbeat)' };
+    config.agents.defaults.models['openrouter/deepseek/deepseek-chat-v3-0324'] = { alias: 'Deepseek v3 (Web Search)' };
+    config.agents.defaults.models['openrouter/openai/gpt-4o'] = { alias: 'GPT-4o (Voice)' };
+    config.agents.defaults.models['openrouter/google/gemini-3-flash-preview'] = { alias: 'Gemini 3 Flash (Vision)' };
+    config.agents.defaults.models['openrouter/google/gemini-2.5-pro-preview'] = { alias: 'Gemini 2.5 Pro' };
+    config.agents.defaults.models['openrouter/anthropic/claude-opus-4'] = { alias: 'Claude Opus 4' };
+    config.agents.defaults.model.primary = 'openrouter/' + defaultModel;
+} else if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
     console.log('Configuring OpenAI provider with base URL:', baseUrl);
@@ -277,6 +341,16 @@ if (isOpenAI) {
 } else {
     // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+}
+
+// Browser configuration (Cloudflare Browser Rendering via CDP shim)
+if (process.env.CDP_SECRET) {
+    const workerHost = 'moltbot-sandbox.ancient-glitter-9ac9.workers.dev';
+    const cdpUrl = 'https://' + workerHost + '/cdp/json/version?secret=' + encodeURIComponent(process.env.CDP_SECRET);
+    config.browser = config.browser || {};
+    config.browser.profiles = config.browser.profiles || {};
+    config.browser.profiles.default = { cdpUrl: cdpUrl, color: '#ff6600' };
+    console.log('Browser Rendering configured: CDP endpoint at', workerHost);
 }
 
 // Write updated config

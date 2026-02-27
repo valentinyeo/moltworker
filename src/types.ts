@@ -14,6 +14,11 @@ export interface MoltbotEnv {
   ANTHROPIC_API_KEY?: string;
   ANTHROPIC_BASE_URL?: string;
   OPENAI_API_KEY?: string;
+  // OpenRouter configuration (OpenAI-compatible, supports many models)
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL?: string; // Default model to use (e.g., 'moonshotai/kimi-k2')
+  // Moonshot/Kimi direct API configuration
+  MOONSHOT_API_KEY?: string; // Direct Kimi K2 API key from Moonshot AI
   MOLTBOT_GATEWAY_TOKEN?: string; // Gateway token (mapped to CLAWDBOT_GATEWAY_TOKEN for container)
 
   CLAWDBOT_BIND_MODE?: string;
@@ -34,6 +39,8 @@ export interface MoltbotEnv {
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
   CF_ACCOUNT_ID?: string; // Cloudflare account ID for R2 endpoint
+  // Hypertask MCP integration
+  HYPERTASK_BEARER_TOKEN?: string; // Bearer token for Hypertask MCP API
   // Browser Rendering binding for CDP shim
   BROWSER?: Fetcher;
   CDP_SECRET?: string; // Shared secret for CDP endpoint authentication
