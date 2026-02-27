@@ -252,6 +252,18 @@ Available tools: `hypertask_get_user_context`, `hypertask_list_tasks`, `hypertas
 
 **Note**: The bearer token is a JWT with an expiry (`exp` claim). Check and refresh before it expires.
 
+### Voice Skill
+
+The `skills/voice/` skill sends Telegram voice messages using Microsoft Edge TTS (free, no API key). The script at `scripts/voice-send.js` synthesizes text to MP3 via `@andresaya/edge-tts` and sends it via Telegram's `sendVoice` API.
+
+```bash
+node /root/clawd/skills/voice/scripts/voice-send.js '<text>' '<chat_id>' [voice] [rate]
+```
+
+- Default voice: `en-US-AvaMultilingualNeural`
+- Output format: MP3 (`audio-24khz-48kbitrate-mono-mp3`) — OGG/OPUS silently fails in this library version
+- Requires `TELEGRAM_BOT_TOKEN` env var (already configured in the container)
+
 ### Adding a New Skill
 
 1. Create `skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`, optional `user-invocable: true`)
