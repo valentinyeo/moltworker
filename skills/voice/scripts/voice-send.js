@@ -21,11 +21,12 @@ if (!botToken) {
 }
 
 async function main() {
-  // Synthesize speech to OGG/OPUS (native Telegram voice format)
+  // Synthesize speech to MP3 (OGG/OPUS not supported by this library version)
+  // Telegram accepts MP3 via sendVoice and displays it as a voice message
   const tts = new EdgeTTS();
   await tts.synthesize(text, voice, {
     rate,
-    outputFormat: "ogg-24khz-16bit-mono-opus",
+    outputFormat: "audio-24khz-48kbitrate-mono-mp3",
   });
   const audioBuffer = tts.toBuffer();
 
@@ -34,7 +35,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Synthesized ${audioBuffer.length} bytes of OGG/OPUS audio`);
+  console.log(`Synthesized ${audioBuffer.length} bytes of MP3 audio`);
 
   // Send to Telegram as voice message
   const form = new FormData();

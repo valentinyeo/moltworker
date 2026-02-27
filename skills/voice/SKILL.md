@@ -70,10 +70,7 @@ curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates" | node -e
 
 ## Output Format
 
-Audio is synthesized as OGG/OPUS (`ogg-24khz-16bit-mono-opus`) — the native Telegram voice format. This ensures:
-- Waveform visualization in the chat
-- Playback speed controls (1x, 1.5x, 2x)
-- Compact file size
+Audio is synthesized as MP3 (`audio-24khz-48kbitrate-mono-mp3`) and sent via Telegram's `sendVoice` API, which displays it as a voice message with playback controls.
 
 ## Troubleshooting
 
